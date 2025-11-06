@@ -1,8 +1,6 @@
 package db
 
 import (
-	taskservices "study/api/internal/TaskServices"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -15,9 +13,6 @@ func InitDB() (*gorm.DB, error) {
 	var err error
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, err
-	}
-	if err = db.AutoMigrate(&taskservices.Task{}); err != nil {
 		return nil, err
 	}
 	return db, nil
