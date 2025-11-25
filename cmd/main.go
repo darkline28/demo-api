@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"log"
 	"os"
 	taskservices "study/api/internal/TaskServices"
 	"study/api/internal/db"
 	"study/api/internal/handlers"
+	"study/api/internal/web/tasks"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 // func (s *Server) handlerTasks(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +120,14 @@ func main() {
 	taskSrv := taskservices.NewTaskService(taskRepo)
 	taskHandle := handlers.NewTaskHandlers(taskSrv)
 
-	http.HandleFunc("/tasks", taskHandle.HandleTasks)
-	http.HandleFunc("/tasks/", taskHandle.HandleTaskByID)
-	http.ListenAndServe(":8080", nil)
+	e := echo.New()
+
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	strictHandler := tasks.NewStrictHandler(taskHandle, nil)
+	tasks.RegisterHandlers(e, strictHandler)
+
+	if err := e.Start(":8080"); err != nil {
+		log.Fatalf("faild to start with err: %v", err)
+	}
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type TaskService interface {
-	Create(text string) (Task, error)
+	Create(text Task) (Task, error)
 	List() ([]Task, error)
 	GetByID(id int) (Task, error)
 	Update(id int, text, status string) (Task, error)
@@ -21,12 +21,12 @@ func NewTaskService(r TaskRepository) TaskService {
 	return &taskService{repo: r}
 }
 
-func (s *taskService) Create(text string) (Task, error) {
-	if text == "" {
+func (s *taskService) Create(text Task) (Task, error) {
+	if text.Text == "" {
 		return Task{}, errors.New("text required")
 	}
 	task := Task{
-		Text:   text,
+		Text:   text.Text,
 		Status: "new",
 	}
 	if err := s.repo.Create(&task); err != nil {
