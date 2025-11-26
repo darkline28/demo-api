@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// TaskService describes business logic for managing tasks
 type TaskService interface {
 	Create(text Task) (Task, error)
 	List() ([]Task, error)
@@ -17,6 +18,7 @@ type taskService struct {
 	repo TaskRepository
 }
 
+// NewTaskService constructs a TaskService using the provided repository
 func NewTaskService(r TaskRepository) TaskService {
 	return &taskService{repo: r}
 }

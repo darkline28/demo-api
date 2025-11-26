@@ -1,3 +1,4 @@
+// Package handlers exposes HTTP handlers that adapt the task service to the web API layer
 package handlers
 
 import (
@@ -7,10 +8,12 @@ import (
 	"study/api/internal/web/tasks"
 )
 
+// TaskHandlers groups HTTP handlers for task-related endpoints
 type TaskHandlers struct {
 	service taskservices.TaskService
 }
 
+// NewTaskHandlers returns a TaskHandlers instance configured with the given task service
 func NewTaskHandlers(s taskservices.TaskService) *TaskHandlers {
 	return &TaskHandlers{
 		service: s,
@@ -18,7 +21,7 @@ func NewTaskHandlers(s taskservices.TaskService) *TaskHandlers {
 }
 
 // GetTasks implements tasks.StrictServerInterface.
-func (h *TaskHandlers) GetTasks(ctx context.Context, request tasks.GetTasksRequestObject) (tasks.GetTasksResponseObject, error) {
+func (h *TaskHandlers) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject) (tasks.GetTasksResponseObject, error) {
 	alltasks, err := h.service.List()
 	if err != nil {
 		return nil, err
@@ -37,7 +40,7 @@ func (h *TaskHandlers) GetTasks(ctx context.Context, request tasks.GetTasksReque
 }
 
 // PostTasks implements tasks.StrictServerInterface.
-func (h *TaskHandlers) PostTasks(ctx context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
+func (h *TaskHandlers) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
 	taskRequest := request.Body
 	taskToCreate := taskservices.Task{
 		Text:   *taskRequest.Task,
@@ -55,8 +58,8 @@ func (h *TaskHandlers) PostTasks(ctx context.Context, request tasks.PostTasksReq
 	return response, nil
 }
 
-// PatchTasksId implements tasks.StrictServerInterface.
-func (h *TaskHandlers) PatchTasksId(ctx context.Context, request tasks.PatchTasksIdRequestObject) (tasks.PatchTasksIdResponseObject, error) {
+// PatchTasksID handles partial update of a task
+func (h *TaskHandlers) PatchTasksID(_ context.Context, request tasks.PatchTasksIdRequestObject) (tasks.PatchTasksIdResponseObject, error) {
 	id := request.Id
 	taskRequest := request.Body
 	if taskRequest == nil {
@@ -89,8 +92,8 @@ func (h *TaskHandlers) PatchTasksId(ctx context.Context, request tasks.PatchTask
 
 }
 
-// DeleteTasksId implements tasks.StrictServerInterface.
-func (h *TaskHandlers) DeleteTasksId(ctx context.Context, request tasks.DeleteTasksIdRequestObject) (tasks.DeleteTasksIdResponseObject, error) {
+// DeleteTasksID handles deletion of a task by ID
+func (h *TaskHandlers) DeleteTasksID(_ context.Context, request tasks.DeleteTasksIdRequestObject) (tasks.DeleteTasksIdResponseObject, error) {
 	id := request.Id
 	if err := h.service.Delete(id); err != nil {
 		return nil, err

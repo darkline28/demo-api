@@ -4,6 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// TaskRepository defines persistence operations for working with tasks
 type TaskRepository interface {
 	Create(task *Task) error
 	FindAll() ([]Task, error)
@@ -16,6 +17,7 @@ type taskRepo struct {
 	db *gorm.DB
 }
 
+// NewTaskRepository creates a TaskRepository backed by the given gorm.DB instance
 func NewTaskRepository(db *gorm.DB) TaskRepository {
 	return &taskRepo{
 		db: db,

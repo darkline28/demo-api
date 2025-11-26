@@ -1,0 +1,45 @@
+run:
+  timeout: 3m
+  tests: true      # тоже проверяем тесты, если появятся
+
+issues:
+  max-issues-per-linter: 0  # 0 = без лимита, всё показываем
+  max-same-issues: 0
+  exclude-use-default: false  # не прятать встроенные ворнинги
+
+linters:
+  enable:
+    - govet         # стандартный анализатор Go
+    - staticcheck   # мощный анализатор, много умных замечаний
+    - gosimple      # упрощение кода
+    - ineffassign   # неиспользованные присваивания
+    - errcheck      # неигнорированные ошибки
+    - gofmt         # форматирование
+    - goimports     # импорты
+    - revive        # стиль и читаемость (замена golint)
+    - gocyclo       # сложность функций
+    - gocognit      # когнитивная сложность
+    - gocritic      # много полезных правил
+    - nakedret      # голые return’ы
+    - prealloc      # предложения по prealloc для слайсов
+    - unparam       # неиспользуемые параметры
+    - misspell      # орфография в комментариях/строках
+    - mnd        # “магические числа” (строгий, но полезный)
+  disable-all: true
+
+linters-settings:
+  gocyclo:
+    min-complexity: 10   # если начнёт бесить — можно поднять, например до 15
+  gocognit:
+    min-complexity: 15
+  gomnd:
+    settings:
+      mnd:
+        ignored-numbers:
+          - 0
+          - 1
+          - 2
+          - 3
+        ignored-functions:
+          - len
+          - cap

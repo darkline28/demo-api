@@ -1,3 +1,4 @@
+// Package main wires up the application and starts the HTTP server
 package main
 
 import (
