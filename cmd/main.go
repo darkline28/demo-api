@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	userservices "study/api/UserServices"
 	taskservices "study/api/internal/TaskServices"
 	"study/api/internal/db"
 	"study/api/internal/handlers"
 	"study/api/internal/web/tasks"
+	"study/api/internal/web/users"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -119,16 +121,23 @@ func main() {
 	}
 	taskRepo := taskservices.NewTaskRepository(database)
 	taskSrv := taskservices.NewTaskService(taskRepo)
-	taskHandle := handlers.NewTaskHandlers(taskSrv)
+	taskHandlers := handlers.NewTaskHandlers(taskSrv)
+
+	userRepo := userservices.NewUserRepository(database)
+	userSrv := userservices.NewUserService(userRepo)
+	userHanlders := handlers.NewUserHandlers(userSrv)
 
 	e := echo.New()
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	strictHandler := tasks.NewStrictHandler(taskHandle, nil)
+	strictHandler := tasks.NewStrictHandler(taskHandlers, nil)
 	tasks.RegisterHandlers(e, strictHandler)
 
+	strictHandlerUser := users.NewStrictHandler(userHanlders, nil)
+	users.RegisterHandlers(e, strictHandlerUser)
+
 	if err := e.Start(":8080"); err != nil {
-		log.Fatalf("faild to start with err: %v", err)
+		log.Fatalf("failed to start with err: %v", err)
 	}
 }

@@ -18,7 +18,7 @@ func TestCreateTask(t *testing.T) {
 		{
 			name:  "успешное создание задачи",
 			input: Task{Text: "Test task", Status: "new"},
-			mockSetUp: func(m *MockTaskRepository, input Task) {
+			mockSetUp: func(m *MockTaskRepository, _ Task) {
 				m.On("Create", mock.AnythingOfType("*taskservices.Task")).Return(nil)
 			},
 			wantErr: false,
@@ -26,7 +26,7 @@ func TestCreateTask(t *testing.T) {
 		{
 			name:  "ошибка при создании",
 			input: Task{Text: "bad task", Status: "new"},
-			mockSetUp: func(m *MockTaskRepository, input Task) {
+			mockSetUp: func(m *MockTaskRepository, _ Task) {
 				m.On("Create", mock.AnythingOfType("*taskservices.Task")).Return(errors.New("db error"))
 			},
 			wantErr: true,
