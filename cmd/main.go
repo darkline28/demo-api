@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	userservices "study/api/UserServices"
 	taskservices "study/api/internal/TaskServices"
+	userservices "study/api/internal/UserServices"
 	"study/api/internal/db"
 	"study/api/internal/handlers"
 	"study/api/internal/web/tasks"
@@ -120,11 +120,12 @@ func main() {
 		os.Exit(1)
 	}
 	taskRepo := taskservices.NewTaskRepository(database)
-	taskSrv := taskservices.NewTaskService(taskRepo)
-	taskHandlers := handlers.NewTaskHandlers(taskSrv)
-
 	userRepo := userservices.NewUserRepository(database)
-	userSrv := userservices.NewUserService(userRepo)
+
+	taskSrv := taskservices.NewTaskService(taskRepo, userRepo)
+	userSrv := userservices.NewUserService(userRepo, taskRepo)
+
+	taskHandlers := handlers.NewTaskHandlers(taskSrv)
 	userHanlders := handlers.NewUserHandlers(userSrv)
 
 	e := echo.New()

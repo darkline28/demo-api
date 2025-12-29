@@ -1,16 +1,19 @@
 package taskservices
 
 import (
+	"study/api/internal/models"
+
 	"gorm.io/gorm"
 )
 
 // TaskRepository defines persistence operations for working with tasks
 type TaskRepository interface {
-	Create(task *Task) error
-	FindAll() ([]Task, error)
-	FindByID(id int) (Task, error)
-	Update(task *Task) error
+	Create(task *models.Task) error
+	FindAll() ([]models.Task, error)
+	FindByID(id int) (models.Task, error)
+	Update(task *models.Task) error
 	Delete(id int) error
+	FindByUserID(userID int) ([]models.Task, error)
 }
 
 type taskRepo struct {
@@ -24,26 +27,33 @@ func NewTaskRepository(db *gorm.DB) TaskRepository {
 	}
 }
 
-func (r *taskRepo) Create(task *Task) error {
+// FindByUserID implements TaskRepository.
+func (r *taskRepo) FindByUserID(userID int) ([]models.Task, error) {
+	var tasks []models.Task
+	err := r.db.Find(&tasks, "user_id = ?", userID).Error
+	return tasks, err
+}
+
+func (r *taskRepo) Create(task *models.Task) error {
 	return r.db.Create(task).Error
 }
 
-func (r *taskRepo) FindAll() ([]Task, error) {
-	var tasks []Task
+func (r *taskRepo) FindAll() ([]models.Task, error) {
+	var tasks []models.Task
 	err := r.db.Find(&tasks).Error
 	return tasks, err
 }
 
-func (r *taskRepo) FindByID(id int) (Task, error) {
-	var task Task
+func (r *taskRepo) FindByID(id int) (models.Task, error) {
+	var task models.Task
 	err := r.db.First(&task, "id = ?", id).Error
 	return task, err
 }
 
-func (r *taskRepo) Update(task *Task) error {
+func (r *taskRepo) Update(task *models.Task) error {
 	return r.db.Save(task).Error
 }
 
 func (r *taskRepo) Delete(id int) error {
-	return r.db.Delete(&Task{}, "id = ?", id).Error
+	return r.db.Delete(&models.Task{}, "id = ?", id).Error
 }

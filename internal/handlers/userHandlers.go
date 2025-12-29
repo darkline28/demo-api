@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	userservices "study/api/UserServices"
+	userservices "study/api/internal/UserServices"
+	"study/api/internal/models"
 	"study/api/internal/web/users"
 )
 
@@ -20,7 +21,32 @@ func NewUserHandlers(s userservices.UserService) *UserHandlers {
 	}
 }
 
-// DeleteUsersId implements users.StrictServerInterface.
+// GetUsersIDTasks implements users.StrictServerInterface.
+func (u *UserHandlers) GetUsersIDTasks(_ context.Context, request users.GetUsersIDTasksRequestObject) (users.GetUsersIDTasksResponseObject, error) {
+	userID := request.Id
+	tasks, err := u.service.GetTasksForUser(userID)
+
+	if errors.Is(err, userservices.ErrUserNotFound) {
+		return users.GetUsersIDTasks404Response{}, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	response := users.GetUsersIDTasks200JSONResponse{}
+
+	for _, t := range tasks {
+		userTasks := users.Task{
+			Id:     &t.ID,
+			Task:   &t.Text,
+			Status: &t.Status,
+			UserId: &t.UserID,
+		}
+		response = append(response, userTasks)
+	}
+	return response, nil
+}
 
 // GetUsers implements users.StrictServerInterface.
 func (u *UserHandlers) GetUsers(_ context.Context, _ users.GetUsersRequestObject) (users.GetUsersResponseObject, error) {
@@ -46,7 +72,7 @@ func (u *UserHandlers) GetUsers(_ context.Context, _ users.GetUsersRequestObject
 // PostUsers implements users.StrictServerInterface.
 func (u *UserHandlers) PostUsers(_ context.Context, request users.PostUsersRequestObject) (users.PostUsersResponseObject, error) {
 	userRequest := request.Body
-	userToCreate := userservices.User{
+	userToCreate := models.User{
 		Email:    userRequest.Email,
 		Password: userRequest.Password,
 	}
@@ -111,7 +137,7 @@ func (u *UserHandlers) DeleteUsersID(_ context.Context, request users.DeleteUser
 	return users.DeleteUsersID204Response{}, nil
 }
 
-func checkUserPatch(currentUser userservices.User, patchRequest *users.PatchUsersIDJSONRequestBody, srv userservices.UserService) (string, string, error) {
+func checkUserPatch(currentUser models.User, patchRequest *users.PatchUsersIDJSONRequestBody, srv userservices.UserService) (string, string, error) {
 	updatedEmail := currentUser.Email
 
 	if patchRequest.Email != nil {

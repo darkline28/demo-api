@@ -3,8 +3,10 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	taskservices "study/api/internal/TaskServices"
+	"study/api/internal/models"
 	"study/api/internal/web/tasks"
 )
 
@@ -33,6 +35,7 @@ func (h *TaskHandlers) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject
 			Id:     &tsk.ID,
 			Task:   &tsk.Text,
 			Status: &tsk.Status,
+			UserId: &tsk.UserID,
 		}
 		response = append(response, task)
 	}
@@ -42,24 +45,31 @@ func (h *TaskHandlers) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject
 // PostTasks implements tasks.StrictServerInterface.
 func (h *TaskHandlers) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
 	taskRequest := request.Body
-	taskToCreate := taskservices.Task{
-		Text:   *taskRequest.Task,
+
+	taskToCreate := models.Task{
+		Text:   taskRequest.Task,
 		Status: *taskRequest.Status,
+		UserID: taskRequest.UserId,
 	}
 	createdTask, err := h.service.Create(taskToCreate)
+
 	if err != nil {
+		if errors.Is(err, taskservices.ErrUserNotFound) {
+			return nil, taskservices.ErrUserNotFound
+		}
 		return nil, err
 	}
 	response := tasks.PostTasks201JSONResponse{
 		Id:     &createdTask.ID,
 		Task:   &createdTask.Text,
 		Status: &createdTask.Status,
+		UserId: &createdTask.UserID,
 	}
 	return response, nil
 }
 
 // PatchTasksID handles partial update of a task
-func (h *TaskHandlers) PatchTasksID(_ context.Context, request tasks.PatchTasksIdRequestObject) (tasks.PatchTasksIdResponseObject, error) {
+func (h *TaskHandlers) PatchTasksID(_ context.Context, request tasks.PatchTasksIDRequestObject) (tasks.PatchTasksIDResponseObject, error) {
 	id := request.Id
 	taskRequest := request.Body
 	if taskRequest == nil {
@@ -83,22 +93,23 @@ func (h *TaskHandlers) PatchTasksID(_ context.Context, request tasks.PatchTasksI
 	if err != nil {
 		return nil, err
 	}
-	response := tasks.PatchTasksId200JSONResponse{
+	response := tasks.PatchTasksID200JSONResponse{
 		Id:     &updateTask.ID,
 		Task:   &updateTask.Text,
 		Status: &updateTask.Status,
+		UserId: &updateTask.UserID,
 	}
 	return response, nil
 
 }
 
 // DeleteTasksID handles deletion of a task by ID
-func (h *TaskHandlers) DeleteTasksID(_ context.Context, request tasks.DeleteTasksIdRequestObject) (tasks.DeleteTasksIdResponseObject, error) {
+func (h *TaskHandlers) DeleteTasksID(_ context.Context, request tasks.DeleteTasksIDRequestObject) (tasks.DeleteTasksIDResponseObject, error) {
 	id := request.Id
 	if err := h.service.Delete(id); err != nil {
 		return nil, err
 	}
-	return tasks.DeleteTasksId204Response{}, nil
+	return tasks.DeleteTasksID204Response{}, nil
 
 }
 

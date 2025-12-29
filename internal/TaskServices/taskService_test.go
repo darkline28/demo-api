@@ -2,76 +2,104 @@ package taskservices
 
 import (
 	"errors"
+	"study/api/internal/models"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 )
 
 func TestCreateTask(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     Task
-		mockSetUp func(m *MockTaskRepository, input Task)
-		wantErr   bool
+		name          string
+		input         models.Task
+		mockSetUp     func(m *MockTaskRepository, input models.Task)
+		mockSetUpUser func(u *MockUserFinder, input models.Task)
+		wantErr       bool
+		wantErrIs     error
 	}{
 		{
 			name:  "успешное создание задачи",
-			input: Task{Text: "Test task", Status: "new"},
-			mockSetUp: func(m *MockTaskRepository, _ Task) {
-				m.On("Create", mock.AnythingOfType("*taskservices.Task")).Return(nil)
+			input: models.Task{Text: "Test task", Status: "new", UserID: 1},
+			mockSetUp: func(m *MockTaskRepository, _ models.Task) {
+				m.On("Create", mock.AnythingOfType("*models.Task")).Return(nil)
 			},
-			wantErr: false,
+			mockSetUpUser: func(u *MockUserFinder, input models.Task) {
+				u.On("FindByID", input.UserID).
+					Return(models.User{ID: input.UserID}, nil)
+			},
+			wantErr:   false,
+			wantErrIs: nil,
 		},
 		{
-			name:  "ошибка при создании",
-			input: Task{Text: "bad task", Status: "new"},
-			mockSetUp: func(m *MockTaskRepository, _ Task) {
-				m.On("Create", mock.AnythingOfType("*taskservices.Task")).Return(errors.New("db error"))
+			name:  "ошибка — пользователь не найден",
+			input: models.Task{Text: "bad task", Status: "new", UserID: 1},
+			mockSetUpUser: func(u *MockUserFinder, input models.Task) {
+				u.On("FindByID", input.UserID).
+					Return(models.User{}, gorm.ErrRecordNotFound)
 			},
-			wantErr: true,
+			wantErr:   true,
+			wantErrIs: ErrUserNotFound,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := new(MockTaskRepository)
-			tt.mockSetUp(mockRepo, tt.input)
+			if tt.mockSetUp != nil {
+				tt.mockSetUp(mockRepo, tt.input)
+			}
 
-			service := NewTaskService(mockRepo)
+			mockUserFinder := new(MockUserFinder)
+			if tt.mockSetUpUser != nil {
+				tt.mockSetUpUser(mockUserFinder, tt.input)
+			}
+
+			service := NewTaskService(mockRepo, mockUserFinder)
 			result, err := service.Create(tt.input)
 
 			if tt.wantErr {
 				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.input.Text, result.Text)
-				assert.Equal(t, "new", result.Status)
+
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(t, err, tt.wantErrIs)
+				}
+
+				if tt.wantErrIs == ErrUserNotFound {
+					mockRepo.AssertNotCalled(t, "Create", mock.Anything)
+				}
+
+				return
 			}
 
+			assert.NoError(t, err)
+			assert.Equal(t, tt.input.Text, result.Text)
+			assert.Equal(t, "new", result.Status)
+
 			mockRepo.AssertExpectations(t)
+			mockUserFinder.AssertExpectations(t)
 		})
 	}
 }
-
 func TestListTasks(t *testing.T) {
 	tests := []struct {
 		name      string
 		mockSetUp func(m *MockTaskRepository)
-		want      []Task
+		want      []models.Task
 		wantErr   bool
 	}{
 		{
 			name: "успешное создание списка задач",
 			mockSetUp: func(m *MockTaskRepository) {
-				m.On("FindAll").Return([]Task{
+				m.On("FindAll").Return([]models.Task{
 					{ID: 1, Text: "test1", Status: "new"},
 					{ID: 2, Text: "test2", Status: "done"},
 				},
 					nil,
 				)
 			},
-			want: []Task{
+			want: []models.Task{
 				{ID: 1, Text: "test1", Status: "new"},
 				{ID: 2, Text: "test2", Status: "done"},
 			},
@@ -80,7 +108,7 @@ func TestListTasks(t *testing.T) {
 		{
 			name: "ошибка при создании списка задач",
 			mockSetUp: func(m *MockTaskRepository) {
-				m.On("FindAll").Return([]Task{}, errors.New("db error"))
+				m.On("FindAll").Return([]models.Task{}, errors.New("db error"))
 			},
 			wantErr: true,
 		},
@@ -90,8 +118,8 @@ func TestListTasks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := new(MockTaskRepository)
 			tt.mockSetUp(mockRepo)
-
-			service := NewTaskService(mockRepo)
+			mockUserFinder := new(MockUserFinder)
+			service := NewTaskService(mockRepo, mockUserFinder)
 			result, err := service.List()
 
 			if tt.wantErr {
@@ -110,20 +138,20 @@ func TestGetByIDTasks(t *testing.T) {
 		name      string
 		input     int
 		mockSetUp func(m *MockTaskRepository, input int)
-		want      Task
+		want      models.Task
 		wantErr   bool
 	}{
 		{
 			name:  "успешный вывод задачи по id",
 			input: 1,
 			mockSetUp: func(m *MockTaskRepository, input int) {
-				m.On("FindByID", input).Return(Task{
+				m.On("FindByID", input).Return(models.Task{
 					ID: 1, Text: "test1", Status: "new",
 				},
 					nil,
 				)
 			},
-			want: Task{
+			want: models.Task{
 				ID:     1,
 				Text:   "test1",
 				Status: "new",
@@ -134,7 +162,7 @@ func TestGetByIDTasks(t *testing.T) {
 			name:  "ошибка вывода задачи по id",
 			input: 2,
 			mockSetUp: func(m *MockTaskRepository, input int) {
-				m.On("FindByID", input).Return(Task{}, errors.New("db error"))
+				m.On("FindByID", input).Return(models.Task{}, errors.New("db error"))
 			},
 			wantErr: true,
 		},
@@ -143,8 +171,9 @@ func TestGetByIDTasks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := new(MockTaskRepository)
 			tt.mockSetUp(mockRepo, tt.input)
+			mockUserFinder := new(MockUserFinder)
+			service := NewTaskService(mockRepo, mockUserFinder)
 
-			service := NewTaskService(mockRepo)
 			result, err := service.GetByID(tt.input)
 
 			if tt.wantErr {
@@ -166,7 +195,7 @@ func TestUpdateTask(t *testing.T) {
 		inputText   string
 		inputStatus string
 		mockSetUp   func(m *MockTaskRepository)
-		want        Task
+		want        models.Task
 		wantErr     bool
 	}{
 		{
@@ -175,14 +204,14 @@ func TestUpdateTask(t *testing.T) {
 			inputText:   "new test1",
 			inputStatus: "new",
 			mockSetUp: func(m *MockTaskRepository) {
-				m.On("FindByID", 1).Return(Task{
+				m.On("FindByID", 1).Return(models.Task{
 					ID:     1,
 					Text:   "old test1",
 					Status: "done",
 				}, nil)
-				m.On("Update", mock.AnythingOfType("*taskservices.Task")).Return(nil)
+				m.On("Update", mock.AnythingOfType("*models.Task")).Return(nil)
 			},
-			want: Task{
+			want: models.Task{
 				ID:     1,
 				Text:   "new test1",
 				Status: "new",
@@ -195,17 +224,17 @@ func TestUpdateTask(t *testing.T) {
 			inputText:   "old test2",
 			inputStatus: "done",
 			mockSetUp: func(m *MockTaskRepository) {
-				m.On("FindByID", 2).Return(Task{}, errors.New("db error"))
+				m.On("FindByID", 2).Return(models.Task{}, errors.New("db error"))
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockrepo := new(MockTaskRepository)
-			tt.mockSetUp(mockrepo)
-
-			service := NewTaskService(mockrepo)
+			mockRepo := new(MockTaskRepository)
+			tt.mockSetUp(mockRepo)
+			mockUserFinder := new(MockUserFinder)
+			service := NewTaskService(mockRepo, mockUserFinder)
 			result, err := service.Update(tt.inputID, tt.inputText, tt.inputStatus)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -213,7 +242,7 @@ func TestUpdateTask(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.want, result)
 			}
-			mockrepo.AssertExpectations(t)
+			mockRepo.AssertExpectations(t)
 		})
 	}
 }
@@ -229,7 +258,7 @@ func TestDeleteTask(t *testing.T) {
 			name:    "успешное удаление задачи",
 			inputID: 1,
 			mockSetUp: func(m *MockTaskRepository) {
-				m.On("FindByID", 1).Return(Task{
+				m.On("FindByID", 1).Return(models.Task{
 					ID:     1,
 					Text:   "task1",
 					Status: "done",
@@ -242,7 +271,7 @@ func TestDeleteTask(t *testing.T) {
 			name:    "ошибка при удалении задачи",
 			inputID: 2,
 			mockSetUp: func(m *MockTaskRepository) {
-				m.On("FindByID", 2).Return(Task{}, errors.New("db error"))
+				m.On("FindByID", 2).Return(models.Task{}, errors.New("db error"))
 			},
 			wantErr: true,
 		},
@@ -251,8 +280,8 @@ func TestDeleteTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := new(MockTaskRepository)
 			tt.mockSetUp(mockRepo)
-
-			service := NewTaskService(mockRepo)
+			mockUserFinder := new(MockUserFinder)
+			service := NewTaskService(mockRepo, mockUserFinder)
 			err := service.Delete(tt.inputID)
 
 			if tt.wantErr {
